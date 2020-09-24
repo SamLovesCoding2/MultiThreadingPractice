@@ -1,0 +1,189 @@
+package com.company;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.TimeoutException;
+
+public class Main {
+    public static final int MAX = 999;
+    public static void main(String[] args) throws InterruptedException {
+        Thread thread = new Thread(new ComplexComputation(new BigInteger("1000000"),new BigInteger("800000")));
+        thread.setDaemon(true);//set Baemon thread that do not prevents the application from exiting when the main thread terminates
+        thread.start();
+        //IN this computation case, only an interrupt statement is not enough.see in method.
+        thread.interrupt();
+
+
+/*
+        Random r = new Random();
+        Vault vault = new Vault(r.nextInt(MAX));
+
+        List<Thread> tArray = new ArrayList<>();
+        tArray.add(new AHacker(vault));
+        tArray.add(new DHacker(vault));
+        tArray.add(new Police());
+
+        for(Thread t:tArray)
+        {
+            t.start();
+        }
+
+	Thread thread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            System.out.println("We are now in thread  " + Thread.currentThread().getName());
+            throw new RuntimeException("intentional");
+        }
+    });
+        System.out.println("We are in thread:  " + Thread.currentThread().getName() + " before ");
+        //name matters when there are multiple threads.
+        thread.setName("New Worker Thread");
+        thread.start();
+        //we can manually set the dynamic priority by:
+        thread.setPriority(2);//a number between 1 to 10
+        // to catch unexpected exception
+        thread.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread t, Throwable e) {
+                System.out.println("critical exception");
+            }
+        });
+        System.out.println("We are in thread:  " + Thread.currentThread().getName() + " after ");
+       // Thread.sleep(100000);//the thread will not be called after this amount of time passed.
+        */
+    }
+
+    //case study
+    public static class Vault
+    {
+        private int password;
+        public Vault(int password)
+        {
+            this.password = password;
+        }
+        public boolean isCorrect(int thePassword) {
+            try {
+                Thread.sleep(5);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return this.password == thePassword;
+        }
+    }
+    public static abstract class Hacker extends Thread
+    {
+        protected Vault vault;
+
+        public Hacker(Vault v)
+        {
+            vault = v;
+            this.setName(this.getClass().getSimpleName());
+            this.setPriority(MAX_PRIORITY);
+        }
+
+        @Override
+        public void start() {
+            System.out.println(this.getName() + " is current Running ");
+            super.start();
+        }
+    }
+    public static class AHacker extends Hacker//ascending order
+    {
+        public AHacker(Vault v)
+        {
+            super(v);
+        }
+        @Override
+        public void run() {
+            for(int i = 0;i<MAX;i++)
+            {
+                    if(vault.isCorrect(i))
+                    {
+                        System.out.println(" AHacker solved the password, money gone!!" + "the password is: " + i);
+                        System.exit(0);
+                    }
+                System.out.println("AHacker is guessing: " + i);
+            }
+        }
+    }
+    public static class DHacker extends Hacker//Descending order
+    {
+        public DHacker(Vault v)
+        {
+            super(v);
+        }
+
+        @Override
+        public void run() {
+            for(int i = MAX;i>=0;i--)
+            {
+                if(vault.isCorrect(i))
+                {
+                    System.out.println(" AHacker solved the password, money gone!!" + "the password is: " + i);
+                    System.exit(0);
+                }
+                System.out.println("DHacker is guessing: " + i);
+            }
+        }
+    }
+    public static class Police extends Thread
+    {
+        @Override
+        public void run() {
+            for(int i = 10;i>0;i--)
+            {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println(i);
+            }
+            System.out.println(" the hackers are caught!!!");
+            System.exit(0);
+        }
+    }
+    //interrupt
+    public static class Blocking implements Runnable
+    {
+        @Override
+        public void run() {
+            try {
+                Thread.sleep(100000);
+            } catch (InterruptedException e) {
+                System.out.println("Exiting blocking thread!!! ");
+            }
+        }
+    }
+    public static class ComplexComputation implements Runnable{
+        private BigInteger base;
+        private BigInteger power;
+
+        public ComplexComputation(BigInteger base,BigInteger power)
+        {
+            this.base = base;
+            this.power = power;
+        }
+        @Override
+        public void run() {
+            System.out.println(base + " ^ " + power + " = " + power());
+        }
+        public BigInteger power()
+        {
+            BigInteger result = BigInteger.ONE;
+            for(BigInteger i = BigInteger.ZERO;i.compareTo(power)!=0;i = i.add(BigInteger.ONE))
+            {
+                if(Thread.currentThread().isInterrupted())//this statement is to catch the interruption from the outside world
+                {
+                    System.out.println("computation prematurely ended");
+                    return BigInteger.ZERO;
+                }
+                result = result.multiply(base);
+            }
+            return result;
+        }
+    }
+
+}

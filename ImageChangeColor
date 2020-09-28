@@ -1,0 +1,118 @@
+package com.company;
+
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Main {
+    public static final String picture = "./out/resources/test.jpg";
+    public static final String destination = "./out/test3.jpg";
+
+    public static void main(String[] args) throws IOException {
+        BufferedImage original = ImageIO.read(new File(picture));
+        BufferedImage result = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_RGB);
+        long startTime = System.currentTimeMillis();
+        multiThread(original,result,8);
+        long endTime = System.currentTimeMillis();
+        File outputFile = new File(destination);
+        ImageIO.write(result, "jpg", outputFile);
+        System.out.println("the process used:  " + (endTime-startTime));
+    }
+
+    public static void singleThread(BufferedImage original, BufferedImage result) {
+        recolorImage(original, result, 0, 0, original.getWidth(), original.getHeight());
+    }
+
+    public static void multiThread(BufferedImage original, BufferedImage result, int threadNumber) {
+        List<Thread> tList = new ArrayList<>();
+        int width = original.getWidth();
+        int height = original.getHeight() / threadNumber;
+
+        for (int i = 0; i < threadNumber; i++) {
+            final int threadMultiplier = i;
+            Thread thread = new Thread(() -> {
+                int farLeft = 0;
+                int farTop = height * threadMultiplier;
+                recolorImage(original, result, farLeft, farTop, width, height);
+            });
+            tList.add(thread);
+        }
+        for (Thread t : tList) {
+            t.start();
+        }
+        for (Thread t : tList) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    public static void recolorImage(BufferedImage original, BufferedImage result, int farLeft, int farTop, int width, int height) {
+        for (int i = farLeft; i < original.getWidth() && i < farLeft + width; i++) {
+            for (int j = farTop; i < original.getHeight() && j < farTop + height; j++) {
+                recolorPixel(original, result, i, j);
+            }
+        }
+    }
+
+    public static boolean isGray(int red, int green, int blue) {
+        return Math.abs(red - green) < 25 && Math.abs(red - blue) < 25 && Math.abs(blue - green) < 25;
+    }
+
+    public static void recolorPixel(BufferedImage original, BufferedImage result, int x, int y)//where x and y represents the pixel
+    {
+        int rgb = original.getRGB(x, y);
+        int red = getRed(rgb);
+        int green = getGreen(rgb);
+        int blue = getBlue(rgb);
+
+        int newR, newG, newB;
+        if (isGray(red, green, blue)) {
+            newR = Math.min(255, red + 10);
+            newG = Math.max(0, green - 90);
+            newB = Math.max(0, blue - 30);
+        } else {
+            newR = red;
+            newG = green;
+            newB = blue;
+        }
+        int newRgb = createRgbFromColor(newR, newG, newB);
+        setRgb(result, x, y, newRgb);
+    }
+
+    public static int createRgbFromColor(int red, int green, int blue) {
+        //   '|' is the OR bitwise operator in java
+        int rgb = 0;
+        rgb |= blue;
+        rgb |= green << 8;
+        rgb |= red << 16;
+        rgb |= 0xFF000000;
+
+        return rgb;
+    }
+
+    public static void setRgb(BufferedImage image, int x, int y, int rgb) {
+        image.getRaster().setDataElements(x, y, image.getColorModel().getDataElements(rgb, null));
+    }
+
+    public static int getRed(int rgb) {
+        return (rgb & 0x00FF0000) >> 16;
+    }
+
+    public static int getGreen(int rgb) {
+        return (rgb & 0x0000FF00) >> 8;
+    }
+
+    public static int getBlue(int rgb) {
+        return rgb & 0x000000FF;
+
+    }
+
+}
